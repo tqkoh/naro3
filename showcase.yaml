@@ -1,7 +1,7 @@
 type: runtime
 
 work_dir: "."
-startup: null
+startup: chmod 777 ./target/release/naro3
 entrypoint: ./target/release/naro3
 
 http_proxy: 8080
