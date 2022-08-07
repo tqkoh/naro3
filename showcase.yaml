@@ -5,4 +5,4 @@ startup: []
 entrypoint: cargo run
 
 http_proxy: 8080
-https: on
+https: off
