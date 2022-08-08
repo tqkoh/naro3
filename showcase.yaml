@@ -6,3 +6,7 @@ entrypoint: ./target/release/naro3
 
 http_proxy: 8080
 https: off
+
+branch:
+  master:
+  dev:
