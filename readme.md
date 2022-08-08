@@ -4,11 +4,11 @@
 
 http://naro3.tqk.trap.show/
 
-- `GET /` : "Hello, World!" を返す
-- `GET /hello/{name}` : "Hello, {name}!" を返す
+- `GET /` : "Hello, World!"
+- `GET /ping`: "pong"
+- `GET /hello/{name}` : "Hello, {name}!"
+- `GET /fizzbuzz?count={count}` : 0 より大きく count までの fizzbuzz
 - `POST /post` :
-  - json のうちから以下のものを受け取り、それらのみの json を返す
-    - id: number
-    - name: string
-    - arr: array
-  - 1 個以上のフィールドが足りないと 400
+  - json のうちから id: int, name: string, arr: array<int> を受け取り、それらのみの json
+- `POST /add` :
+  - json から left: int, right: int 受け取って、和 answer: int だけを入れた json
