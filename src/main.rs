@@ -1,5 +1,7 @@
 use actix_web::{get, middleware, post, web, App, HttpRequest, HttpServer, Responder};
 use serde::{Deserialize, Serialize};
+use sqlx::mysql::MySqlPoolOptions;
+use std::env;
 
 #[derive(Serialize, Deserialize)]
 struct JsonData {
@@ -37,6 +39,11 @@ async fn index(req: HttpRequest) -> impl Responder {
 #[get("ping")]
 async fn ping() -> impl Responder {
     "pong"
+}
+
+#[get("dbtest")]
+async fn dbtest() -> impl Responder {
+    "test"
 }
 
 #[get("fizzbuzz")]
@@ -84,12 +91,42 @@ async fn add(info: web::Json<AddJsonData>) -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    std::env::set_var("RUST_LOG", "actix_web=info");
+    env::set_var("RUST_LOG", "actix_web=info");
     env_logger::init();
-    let address = match std::env::var("NARO3_ADDRESS") {
+    let address = match env::var("NARO3_ADDRESS") {
         Ok(val) => val,
         Err(_e) => "localhost".to_string(),
     };
+
+    let database = env::var("DB_DATABASE").expect("DB_DATABASE is not set");
+    let user = env::var("DB_USERNAME").expect("DB_USERNAME is not set");
+    let password = env::var("DB_PASSWORD").expect("DB_PASSWORD is not set");
+    let port = env::var("DB_PORT").unwrap_or("3306".to_string());
+    let host = env::var("DB_HOSTNAME").unwrap_or("localhost".to_string());
+
+    // mysql://user:pass@127.0.0.1:3306/db_name
+    let database_url = format!(
+        "mysql://{}:{}@{}:{}/{}",
+        user, password, host, port, database
+    );
+    println!(
+        "{}",
+        format!("mysql://{}:(password)@{}:{}/{}", user, host, port, database)
+    );
+
+    let pool = sqlx::mysql::MySqlPoolOptions::new()
+        .max_connections(5)
+        .connect(&database_url)
+        .await
+        .unwrap();
+
+    let sql = r#"SELECT * FROM city WHERE Name='Tokyo'"#;
+    let row: (i64,) = sqlx::query_as(sql)
+        .bind(150_i64)
+        .fetch_one(&pool)
+        .await
+        .unwrap_or((-1,));
+    println!("{}", row.0);
 
     HttpServer::new(|| {
         App::new()
@@ -100,6 +137,7 @@ async fn main() -> std::io::Result<()> {
             .service(hello)
             .service(post)
             .service(add)
+            .service(dbtest)
     })
     .bind((address, 8080))?
     .run()

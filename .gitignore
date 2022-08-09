@@ -1,2 +1,4 @@
 /target/*
 !/target/release/naro3
+
+env.sh
