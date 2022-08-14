@@ -129,6 +129,11 @@ async fn main() -> std::io::Result<()> {
         .await
         .unwrap();
 
+    // sqlx::query("SOURCE world-db/world.sql")
+    //     .execute(&pool)
+    //     .await
+    //     .unwrap();
+
     let pool_data = Arc::new(Mutex::new(pool));
     HttpServer::new(move || {
         App::new()
