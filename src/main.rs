@@ -1,7 +1,9 @@
+use actix_web::web::Data;
 use actix_web::{get, middleware, post, web, App, HttpRequest, HttpServer, Responder};
 use serde::{Deserialize, Serialize};
 use sqlx::mysql::MySqlPoolOptions;
 use std::env;
+use std::sync::*;
 
 #[derive(Serialize, Deserialize)]
 struct JsonData {
@@ -42,8 +44,18 @@ async fn ping() -> impl Responder {
 }
 
 #[get("dbtest")]
-async fn dbtest() -> impl Responder {
-    "test"
+async fn dbtest(pool_data: web::Data<Arc<Mutex<sqlx::Pool<sqlx::MySql>>>>) -> impl Responder {
+    println!("{:?}", pool_data);
+    let pool = pool_data.lock().unwrap();
+    let sql = r#"SELECT * FROM city WHERE Name='Tokyo'"#;
+    let row: (i64,) = sqlx::query_as(sql)
+        .bind(150_i64)
+        .fetch_one(&*pool)
+        .await
+        .unwrap_or((-1,));
+    let ret = format!("{}", row.0);
+    println!("{}", ret);
+    ret
 }
 
 #[get("fizzbuzz")]
@@ -92,6 +104,7 @@ async fn add(info: web::Json<AddJsonData>) -> impl Responder {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     env::set_var("RUST_LOG", "actix_web=info");
+    std::env::set_var("RUST_BACKTRACE", "1");
     env_logger::init();
     let address = match env::var("NARO3_ADDRESS") {
         Ok(val) => val,
@@ -109,10 +122,10 @@ async fn main() -> std::io::Result<()> {
         "mysql://{}:{}@{}:{}/{}",
         user, password, host, port, database
     );
-    println!(
-        "{}",
-        format!("mysql://{}:(password)@{}:{}/{}", user, host, port, database)
-    );
+    // println!(
+    //     "{}",
+    //     format!("mysql://{}:(password)@{}:{}/{}", user, host, port, database)
+    // );
 
     let pool = sqlx::mysql::MySqlPoolOptions::new()
         .max_connections(5)
@@ -128,9 +141,11 @@ async fn main() -> std::io::Result<()> {
         .unwrap_or((-1,));
     println!("{}", row.0);
 
-    HttpServer::new(|| {
+    let pool_data = Arc::new(Mutex::new(pool));
+    HttpServer::new(move || {
         App::new()
             .wrap(middleware::Logger::default())
+            .app_data(Data::new(pool_data.clone()))
             .service(index)
             .service(ping)
             .service(fizzbuzz)
