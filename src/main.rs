@@ -111,35 +111,23 @@ async fn main() -> std::io::Result<()> {
         Err(_e) => "localhost".to_string(),
     };
 
-    let database = env::var("DB_DATABASE").expect("DB_DATABASE is not set");
-    let user = env::var("DB_USERNAME").expect("DB_USERNAME is not set");
-    let password = env::var("DB_PASSWORD").expect("DB_PASSWORD is not set");
+    let database = env::var("MARIADB_DATABASE").expect("MARIADB_DATABASE is not set");
+    let user = env::var("MARIADB_USERNAME").expect("MARIADB_USERNAME is not set");
+    let password = env::var("MARIADB_PASSWORD").expect("MARIADB_PASSWORD is not set");
     let port = env::var("DB_PORT").unwrap_or("3306".to_string());
-    let host = env::var("DB_HOSTNAME").unwrap_or("localhost".to_string());
+    let host = env::var("MARIADB_HOSTNAME").unwrap_or("localhost".to_string());
 
     // mysql://user:pass@127.0.0.1:3306/db_name
     let database_url = format!(
         "mysql://{}:{}@{}:{}/{}",
         user, password, host, port, database
     );
-    // println!(
-    //     "{}",
-    //     format!("mysql://{}:(password)@{}:{}/{}", user, host, port, database)
-    // );
 
     let pool = sqlx::mysql::MySqlPoolOptions::new()
         .max_connections(5)
         .connect(&database_url)
         .await
         .unwrap();
-
-    let sql = r#"SELECT * FROM city WHERE Name='Tokyo'"#;
-    let row: (i64,) = sqlx::query_as(sql)
-        .bind(150_i64)
-        .fetch_one(&pool)
-        .await
-        .unwrap_or((-1,));
-    println!("{}", row.0);
 
     let pool_data = Arc::new(Mutex::new(pool));
     HttpServer::new(move || {

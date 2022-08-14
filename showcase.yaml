@@ -1,6 +1,7 @@
 type: runtime
 
 work_dir: "."
+use_mariadb: true
 startup: chmod 777 ./target/release/naro3
 entrypoint: ./target/release/naro3
 
@@ -9,4 +10,4 @@ https: off
 
 branch:
     master:
-    # dev:
+    dev:
