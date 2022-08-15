@@ -1,7 +1,8 @@
 use actix_web::web::Data;
-use actix_web::{get, middleware, post, web, App, HttpRequest, HttpServer, Responder};
+use actix_web::{
+    get, middleware, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder,
+};
 use serde::{Deserialize, Serialize};
-use sqlx::mysql::MySqlPoolOptions;
 use std::env;
 use std::sync::*;
 
@@ -32,6 +33,15 @@ fn default_fizzbuzzquery_count() -> isize {
     10
 }
 
+#[derive(Default, Serialize)]
+struct City {
+    ID: i32,
+    Name: String,
+    CountryCode: String,
+    District: String,
+    Population: i32,
+}
+
 #[get("/")]
 async fn index(req: HttpRequest) -> impl Responder {
     println!("Request: {req:?}");
@@ -48,15 +58,6 @@ async fn dbtest(pool_data: web::Data<Arc<Mutex<sqlx::Pool<sqlx::MySql>>>>) -> im
     println!("{:?}", pool_data);
     let pool = pool_data.lock().unwrap();
     let mut ret: Vec<String> = vec![];
-
-    #[derive(Default)]
-    struct City {
-        ID: i32,
-        Name: String,
-        CountryCode: String,
-        District: String,
-        Population: i32,
-    }
 
     let row_tokyo = sqlx::query_as!(City, r#"SELECT * FROM city WHERE Name='Tokyo'"#)
         .fetch_one(&*pool)
@@ -76,6 +77,23 @@ async fn dbtest(pool_data: web::Data<Arc<Mutex<sqlx::Pool<sqlx::MySql>>>>) -> im
 
     let ret_joined = ret.join("\n");
     ret_joined
+}
+
+#[get("cities/{name}")]
+async fn cities(
+    name: web::Path<String>,
+    pool_data: web::Data<Arc<Mutex<sqlx::Pool<sqlx::MySql>>>>,
+) -> impl Responder {
+    let pool = pool_data.lock().unwrap();
+    let ret = sqlx::query_as!(City, r#"SELECT * FROM city WHERE Name=?"#, name.to_string())
+        .fetch_one(&*pool)
+        .await
+        .unwrap_or(Default::default());
+    if ret.ID == 0 {
+        HttpResponse::NotFound().body(format!("city {name} not found"))
+    } else {
+        HttpResponse::Ok().json(ret)
+    }
 }
 
 #[get("fizzbuzz")]
@@ -166,6 +184,7 @@ async fn main() -> std::io::Result<()> {
             .service(post)
             .service(add)
             .service(dbtest)
+            .service(cities)
     })
     .bind((address, 8080))?
     .run()
