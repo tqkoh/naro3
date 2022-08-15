@@ -1,2 +1,7 @@
 /target/*
 !/target/release/naro3
+
+env.sh
+init_db.sh
+
+/world-db
