@@ -4,7 +4,6 @@ work_dir: "."
 use_mariadb: true
 startup: |
   chmod 777 ./target/release/naro3
-# source init_db.sh
 entrypoint: ./target/release/naro3
 
 http_proxy: 8080

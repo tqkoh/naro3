@@ -47,15 +47,35 @@ async fn ping() -> impl Responder {
 async fn dbtest(pool_data: web::Data<Arc<Mutex<sqlx::Pool<sqlx::MySql>>>>) -> impl Responder {
     println!("{:?}", pool_data);
     let pool = pool_data.lock().unwrap();
-    let sql = r#"SELECT * FROM city WHERE Name='Tokyo'"#;
-    let row: (i64,) = sqlx::query_as(sql)
-        .bind(150_i64)
+    let mut ret: Vec<String> = vec![];
+
+    #[derive(Default)]
+    struct City {
+        ID: i32,
+        Name: String,
+        CountryCode: String,
+        District: String,
+        Population: i32,
+    }
+
+    let row_tokyo = sqlx::query_as!(City, r#"SELECT * FROM city WHERE Name='Tokyo'"#)
         .fetch_one(&*pool)
         .await
-        .unwrap_or((-1,));
-    let ret = format!("{}", row.0);
-    println!("{}", ret);
-    ret
+        .unwrap_or(Default::default());
+    ret.push(format!("東京都のid: {}\n", row_tokyo.ID));
+    println!("{}", row_tokyo.Name);
+
+    let rows_city_in_japan = sqlx::query_as!(City, r#"SELECT * FROM city WHERE CountryCode='JPN'"#)
+        .fetch_all(&*pool)
+        .await
+        .unwrap_or(Default::default());
+    ret.push("日本の都市一覧:".to_string());
+    for row in rows_city_in_japan.iter() {
+        ret.push(format!("名前: {}, 人口: {}", row.Name, row.Population));
+    }
+
+    let ret_joined = ret.join("\n");
+    ret_joined
 }
 
 #[get("fizzbuzz")]
