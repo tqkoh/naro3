@@ -26,11 +26,7 @@ struct AnswerJsonData {
 
 #[derive(Deserialize)]
 struct FizzbuzzQuery {
-    #[serde(default = "default_fizzbuzzquery_count")]
     count: isize,
-}
-fn default_fizzbuzzquery_count() -> isize {
-    10
 }
 
 #[derive(Default, Serialize)]
@@ -45,12 +41,12 @@ struct City {
 #[get("/")]
 async fn index(req: HttpRequest) -> impl Responder {
     println!("Request: {req:?}");
-    "Hello, World!"
+    HttpResponse::Ok().body("Hello, World!")
 }
 
 #[get("ping")]
 async fn ping() -> impl Responder {
-    "pong"
+    HttpResponse::Ok().body("pong")
 }
 
 #[get("dbtest")]
@@ -75,8 +71,7 @@ async fn dbtest(pool_data: web::Data<Arc<Mutex<sqlx::Pool<sqlx::MySql>>>>) -> im
         ret.push(format!("名前: {}, 人口: {}", row.Name, row.Population));
     }
 
-    let ret_joined = ret.join("\n");
-    ret_joined
+    HttpResponse::Ok().body(ret.join("\n"))
 }
 
 #[get("cities/{name}")]
@@ -101,7 +96,7 @@ async fn fizzbuzz(info: web::Query<FizzbuzzQuery>) -> impl Responder {
     println!("{}", info.count);
 
     if info.count < 0 {
-        return ":ayase_eye2.ex-large:".to_string();
+        return HttpResponse::Ok().body(":ayase_eye2.ex-large:");
     }
 
     let mut ret = "".to_string();
@@ -116,19 +111,17 @@ async fn fizzbuzz(info: web::Query<FizzbuzzQuery>) -> impl Responder {
             ret.push_str(&format!("{}\n", i));
         }
     }
-    ret
+    HttpResponse::Ok().body(ret)
 }
 
 #[get("/hello/{name}")]
 async fn hello(name: web::Path<String>) -> impl Responder {
-    format!("Hello, {name}!")
+    HttpResponse::Ok().body(format!("Hello, {name}!"))
 }
 
 #[post("/post")]
 async fn post(info: web::Json<JsonData>) -> impl Responder {
-    let ret = serde_json::to_string(&info).unwrap();
-    println!("id:{}, name:{}, all:\n{}", info.id, info.name, ret);
-    ret
+    HttpResponse::Ok().json(info)
 }
 
 #[post("/add")]
@@ -136,7 +129,7 @@ async fn add(info: web::Json<AddJsonData>) -> impl Responder {
     let ret = AnswerJsonData {
         answer: info.left + info.right,
     };
-    serde_json::to_string(&ret).unwrap()
+    HttpResponse::Ok().json(ret)
 }
 
 #[actix_web::main]
