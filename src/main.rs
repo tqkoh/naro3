@@ -38,6 +38,14 @@ struct City {
     Population: i32,
 }
 
+#[derive(Default, Deserialize)]
+struct PostCity {
+    name: String,
+    countryCode: String,
+    district: String,
+    population: i32,
+}
+
 #[get("/")]
 async fn index(req: HttpRequest) -> impl Responder {
     println!("Request: {req:?}");
@@ -89,6 +97,21 @@ async fn cities(
     } else {
         HttpResponse::Ok().json(ret)
     }
+}
+
+#[post("/postcity")]
+async fn postcity(
+    city: web::Json<PostCity>,
+    pool_data: web::Data<Arc<Mutex<sqlx::Pool<sqlx::MySql>>>>,
+) -> impl Responder {
+    let pool = pool_data.lock().unwrap();
+    let sql = format!(
+        "INSERT INTO city (Name, CountryCode, District, Population) VALUES ('{}', '{}', '{}', {});",
+        city.name, city.countryCode, city.district, city.population
+    );
+    println!("{}", sql.as_str());
+    sqlx::query(sql.as_str()).execute(&*pool).await.unwrap();
+    HttpResponse::Ok().finish()
 }
 
 #[get("fizzbuzz")]
@@ -177,6 +200,7 @@ async fn main() -> std::io::Result<()> {
             .service(post)
             .service(add)
             .service(dbtest)
+            .service(postcity)
             .service(cities)
     })
     .bind((address, 8080))?
