@@ -10,7 +10,7 @@ http://naro3.tqk.trap.show/
 - `GET /ping`: "pong"
 - `GET /hello/{name}` : "Hello, {name}!"
 - `GET /fizzbuzz?count={count}` : 0 より大きく count までの fizzbuzz
-- `GET /city/{name}`: 名前が name の都市の情報
+- `GET /cities/{name}`: 名前が name の都市の情報
 - `POST /post` :
   - json のうちから id: int, name: string, arr: array<int> を受け取り、それらのみの json
 - `POST /add` :
