@@ -105,12 +105,16 @@ async fn postcity(
     pool_data: web::Data<Arc<Mutex<sqlx::Pool<sqlx::MySql>>>>,
 ) -> impl Responder {
     let pool = pool_data.lock().unwrap();
-    let sql = format!(
-        "INSERT INTO city (Name, CountryCode, District, Population) VALUES ('{}', '{}', '{}', {});",
-        city.name, city.countryCode, city.district, city.population
-    );
-    println!("{}", sql.as_str());
-    sqlx::query(sql.as_str()).execute(&*pool).await.unwrap();
+    sqlx::query!(
+        "INSERT INTO city (Name, CountryCode, District, Population) VALUES (?, ?, ?, ?);",
+        city.name,
+        city.countryCode,
+        city.district,
+        city.population,
+    )
+    .execute(&*pool)
+    .await
+    .unwrap();
     HttpResponse::Ok().finish()
 }
 
