@@ -1,8 +1,8 @@
+use actix_session::Session;
 use actix_web::web::Data;
 use actix_web::{
     get, middleware, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder,
 };
-use actix_session::Session;
 use bcrypt::{hash, verify, DEFAULT_COST};
 use serde::{Deserialize, Serialize};
 use std::env;
@@ -168,23 +168,30 @@ struct LoginRequest {
 }
 
 #[derive(Default)]
-struct User{
+struct User {
     Username: String,
     HashedPass: String,
 }
 
 #[post("signup")]
-async fn signup(req: web::Json<LoginRequest>, pool_data: web::Data<Arc<Mutex<sqlx::Pool<sqlx::MySql>>>>) -> impl Responder {
+async fn signup(
+    req: web::Json<LoginRequest>,
+    pool_data: web::Data<Arc<Mutex<sqlx::Pool<sqlx::MySql>>>>,
+) -> impl Responder {
     let pool = pool_data.lock().unwrap();
     if req.username == "" || req.password == "" {
         return HttpResponse::BadRequest().body("username or password cannot be empty");
     }
-    let hashed_pass = hash(req.password, DEFAULT_COST);
-    let count = sqlx::query_as!(User, r#"SELECT COUNT(*) FROM users WHERE Username=?"#, req.username)
-        .fetch_one(&*pool)
-        .await
-        .unwrap_or(Default::default());
-    
+    let hashed_pass = hash(req.password, DEFAULT_COST).unwrap();
+    let count = sqlx::query!(
+        r#"SELECT COUNT(*) as value FROM users WHERE Username=?"#,
+        req.username
+    )
+    .fetch_one(&*pool)
+    .await
+    .unwrap()
+    .value;
+
     if count > 0 {
         return HttpResponse::Conflict().body("user already exists");
     }
@@ -202,20 +209,24 @@ async fn signup(req: web::Json<LoginRequest>, pool_data: web::Data<Arc<Mutex<sql
 }
 
 #[post("login")]
-async fn login(req: web::Json<LoginRequest>, pool_data: web::Data<Arc<Mutex<sqlx::Pool<sqlx::MySql>>>>,session: Session) -> impl Responder {
+async fn login(
+    req: web::Json<LoginRequest>,
+    pool_data: web::Data<Arc<Mutex<sqlx::Pool<sqlx::MySql>>>>,
+    session: Session,
+) -> impl Responder {
     let pool = pool_data.lock().unwrap();
     let user = sqlx::query_as!(User, "SELECT * FROM users WHERE Username = ?", req.username)
         .fetch_one(&*pool)
         .await
-        .unwrap_or(Default::default);
+        .unwrap();
     let hashed_pass = user.HashedPass;
-    let valid = verify(req.password, hashed_pass);
-    if    !valid{ // test
-        return HttpResponse::Forbidden().finish();
+    let valid = verify(&req.password, &hashed_pass).unwrap();
+    if !valid {
+        return HttpResponse::Forbidden().body("password does not match");
     }
 
-    session.insert("username", req.username)?;
-    HttpResponse::Ok().finish()
+    session.insert("username", &req.username);
+    HttpResponse::Ok().body("login successful")
 }
 
 #[actix_web::main]
@@ -260,6 +271,8 @@ async fn main() -> std::io::Result<()> {
             .service(dbtest)
             .service(postcity)
             .service(cities)
+            .service(signup)
+            .service(login)
     })
     .bind((address, 8080))?
     .run()
