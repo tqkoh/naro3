@@ -2,49 +2,11 @@ use actix_web::web::Data;
 use actix_web::{
     get, middleware, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder,
 };
+use actix_session::Session;
+use bcrypt::{hash, verify, DEFAULT_COST};
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::sync::*;
-
-#[derive(Serialize, Deserialize)]
-struct JsonData {
-    id: isize,
-    name: String,
-    arr: Vec<isize>,
-}
-
-#[derive(Deserialize)]
-struct AddJsonData {
-    left: isize,
-    right: isize,
-}
-
-#[derive(Serialize)]
-struct AnswerJsonData {
-    answer: isize,
-}
-
-#[derive(Deserialize)]
-struct FizzbuzzQuery {
-    count: isize,
-}
-
-#[derive(Default, Serialize)]
-struct City {
-    ID: i32,
-    Name: String,
-    CountryCode: String,
-    District: String,
-    Population: i32,
-}
-
-#[derive(Default, Deserialize)]
-struct PostCity {
-    name: String,
-    countryCode: String,
-    district: String,
-    population: i32,
-}
 
 #[get("/")]
 async fn index(req: HttpRequest) -> impl Responder {
@@ -55,6 +17,15 @@ async fn index(req: HttpRequest) -> impl Responder {
 #[get("ping")]
 async fn ping() -> impl Responder {
     HttpResponse::Ok().body("pong")
+}
+
+#[derive(Default, Serialize)]
+struct City {
+    ID: i32,
+    Name: String,
+    CountryCode: String,
+    District: String,
+    Population: i32,
 }
 
 #[get("dbtest")]
@@ -99,6 +70,14 @@ async fn cities(
     }
 }
 
+#[derive(Default, Deserialize)]
+struct PostCity {
+    name: String,
+    countryCode: String,
+    district: String,
+    population: i32,
+}
+
 #[post("/postcity")]
 async fn postcity(
     city: web::Json<PostCity>,
@@ -116,6 +95,11 @@ async fn postcity(
     .await
     .unwrap();
     HttpResponse::Ok().finish()
+}
+
+#[derive(Deserialize)]
+struct FizzbuzzQuery {
+    count: isize,
 }
 
 #[get("fizzbuzz")]
@@ -146,9 +130,27 @@ async fn hello(name: web::Path<String>) -> impl Responder {
     HttpResponse::Ok().body(format!("Hello, {name}!"))
 }
 
+#[derive(Serialize, Deserialize)]
+struct JsonData {
+    id: isize,
+    name: String,
+    arr: Vec<isize>,
+}
+
 #[post("/post")]
 async fn post(info: web::Json<JsonData>) -> impl Responder {
     HttpResponse::Ok().json(info)
+}
+
+#[derive(Deserialize)]
+struct AddJsonData {
+    left: isize,
+    right: isize,
+}
+
+#[derive(Serialize)]
+struct AnswerJsonData {
+    answer: isize,
 }
 
 #[post("/add")]
@@ -157,6 +159,63 @@ async fn add(info: web::Json<AddJsonData>) -> impl Responder {
         answer: info.left + info.right,
     };
     HttpResponse::Ok().json(ret)
+}
+
+#[derive(Deserialize)]
+struct LoginRequest {
+    username: String,
+    password: String,
+}
+
+#[derive(Default)]
+struct User{
+    Username: String,
+    HashedPass: String,
+}
+
+#[post("signup")]
+async fn signup(req: web::Json<LoginRequest>, pool_data: web::Data<Arc<Mutex<sqlx::Pool<sqlx::MySql>>>>) -> impl Responder {
+    let pool = pool_data.lock().unwrap();
+    if req.username == "" || req.password == "" {
+        return HttpResponse::BadRequest().body("username or password cannot be empty");
+    }
+    let hashed_pass = hash(req.password, DEFAULT_COST);
+    let count = sqlx::query_as!(User, r#"SELECT COUNT(*) FROM users WHERE Username=?"#, req.username)
+        .fetch_one(&*pool)
+        .await
+        .unwrap_or(Default::default());
+    
+    if count > 0 {
+        return HttpResponse::Conflict().body("user already exists");
+    }
+
+    sqlx::query!(
+        "INSERT INTO users (Username, HashedPass) VALUES (?, ?);",
+        req.username,
+        hashed_pass
+    )
+    .execute(&*pool)
+    .await
+    .unwrap();
+
+    HttpResponse::Created().finish()
+}
+
+#[post("login")]
+async fn login(req: web::Json<LoginRequest>, pool_data: web::Data<Arc<Mutex<sqlx::Pool<sqlx::MySql>>>>,session: Session) -> impl Responder {
+    let pool = pool_data.lock().unwrap();
+    let user = sqlx::query_as!(User, "SELECT * FROM users WHERE Username = ?", req.username)
+        .fetch_one(&*pool)
+        .await
+        .unwrap_or(Default::default);
+    let hashed_pass = user.HashedPass;
+    let valid = verify(req.password, hashed_pass);
+    if    !valid{ // test
+        return HttpResponse::Forbidden().finish();
+    }
+
+    session.insert("username", req.username)?;
+    HttpResponse::Ok().finish()
 }
 
 #[actix_web::main]
@@ -186,11 +245,6 @@ async fn main() -> std::io::Result<()> {
         .connect(&database_url)
         .await
         .unwrap();
-
-    // sqlx::query("SOURCE world-db/world.sql")
-    //     .execute(&pool)
-    //     .await
-    //     .unwrap();
 
     let pool_data = Arc::new(Mutex::new(pool));
     HttpServer::new(move || {
