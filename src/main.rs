@@ -1,9 +1,8 @@
 use actix_identity::Identity;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
-use actix_session::Session;
 use actix_web::web::Data;
 use actix_web::{
-    get, middleware, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder,
+    get, post, delete, middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder,
 };
 use bcrypt::{hash, verify, DEFAULT_COST};
 use rand::Rng;
@@ -280,6 +279,12 @@ async fn login(
         .finish()
 }
 
+#[delete("/logout")]
+async fn logout(id: Identity) -> impl Responder {
+    id.forget();
+    HttpResponse::Ok().finish()
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     env::set_var("RUST_LOG", "actix_web=info");
@@ -322,6 +327,7 @@ async fn main() -> std::io::Result<()> {
             .service(index)
             .service(signup)
             .service(login)
+            .service(logout)
             .service(ping)
             .service(fizzbuzz)
             .service(hello)
