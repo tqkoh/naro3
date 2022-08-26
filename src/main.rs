@@ -169,6 +169,11 @@ async fn hello(id: Identity) -> impl Responder {
     ))
 }
 
+#[get("/whoami")]
+async fn whoami(id: Identity) -> impl Responder {
+    HttpResponse::Ok().body(id.identity().unwrap_or("guest".to_owned()))
+}
+
 #[get("/hello/{name}")]
 async fn hello_name(name: web::Path<String>) -> impl Responder {
     HttpResponse::Ok().body(format!("Hello, {name}!"))
@@ -352,6 +357,7 @@ async fn main() -> std::io::Result<()> {
             .service(dbtest)
             .service(postcity)
             .service(cities)
+            .service(whoami)
     })
     .bind((address, 8080))?
     .run()
