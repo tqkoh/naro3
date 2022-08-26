@@ -2,13 +2,19 @@ use actix_identity::Identity;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::web::Data;
 use actix_web::{
-    delete, get, middleware, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder,
+    delete, get, middleware, options, post, web, App, HttpRequest, HttpResponse, HttpServer,
+    Responder,
 };
 use bcrypt::{hash, verify, DEFAULT_COST};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::sync::*;
+
+#[options("{_}")]
+async fn preflight() -> impl Responder {
+    HttpResponse::Ok().finish()
+}
 
 #[get("/")]
 async fn index(req: HttpRequest) -> impl Responder {
@@ -327,6 +333,7 @@ async fn main() -> std::io::Result<()> {
                     .secure(true),
             ))
             .wrap(middleware::Logger::default())
+            .service(preflight)
             .service(index)
             .service(signup)
             .service(login)
