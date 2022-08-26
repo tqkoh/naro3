@@ -1,6 +1,7 @@
 use actix_cors::Cors;
 use actix_identity::Identity;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
+use actix_web::cookie::SameSite;
 use actix_web::web::Data;
 use actix_web::{
     delete, get, http, middleware, options, post, web, App, HttpRequest, HttpResponse, HttpServer,
@@ -275,7 +276,7 @@ async fn login(
         .await
         .unwrap_or(Default::default());
     let hashed_pass = user.HashedPass;
-    let valid = verify(&req.password, &hashed_pass).unwrap();
+    let valid = verify(&req.password, &hashed_pass).unwrap_or(false);
     if !valid || user.Username == "" {
         return HttpResponse::Forbidden().body("username or password is wrong");
     }
@@ -333,7 +334,8 @@ async fn main() -> std::io::Result<()> {
             .wrap(IdentityService::new(
                 CookieIdentityPolicy::new(&private_key)
                     .name("auth")
-                    .secure(false),
+                    .same_site(SameSite::None)
+                    .secure(true),
             ))
             .wrap(middleware::Logger::default())
             .service(preflight)
