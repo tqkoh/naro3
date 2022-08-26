@@ -3,19 +3,19 @@ use actix_identity::Identity;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::web::Data;
 use actix_web::{
-    delete, get, http, middleware, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder,
-}; // options,
+    delete, get, http, middleware, options, post, web, App, HttpRequest, HttpResponse, HttpServer,
+    Responder,
+};
 use bcrypt::{hash, verify, DEFAULT_COST};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::sync::*;
 
-// #[options("{_}")]
-// async fn preflight() -> impl Responder {
-//     add header to allow methods and headers
-//     HttpResponse::Ok().finish()
-// }
+#[options("{_}")]
+async fn preflight() -> impl Responder {
+    HttpResponse::Ok()
+}
 
 #[get("/")]
 async fn index(req: HttpRequest) -> impl Responder {
@@ -321,19 +321,15 @@ async fn main() -> std::io::Result<()> {
     let pool_data = Arc::new(Mutex::new(pool));
     let private_key = rand::thread_rng().gen::<[u8; 32]>();
     HttpServer::new(move || {
-        let cors = Cors::default()
-            .allowed_origin("https://tqk.blue")
-            .allowed_methods(vec!["GET", "POST", "DELETE"])
-            .allowed_headers(vec![http::header::CONTENT_TYPE])
-            .max_age(3600);
         App::new()
             .app_data(Data::new(pool_data.clone()))
-            .wrap(cors)
-            // .wrap(
-            //     middleware::DefaultHeaders::new()
-            //         .add(("Access-Control-Allow-Origin", "https://tqk.blue"))
-            //         .add(("Access-Control-Allow-Credentials", "true")),
-            // )
+            .wrap(
+                middleware::DefaultHeaders::new()
+                    .add(("Access-Control-Allow-Origin", "https://tqk.blue"))
+                    .add(("Access-Control-Allow-Credentials", "true"))
+                    .add(("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS"))
+                    .add(("Access-Control-Allow-Headers", "Content-Type")),
+            )
             .wrap(IdentityService::new(
                 CookieIdentityPolicy::new(&private_key)
                     .name("auth")
