@@ -273,11 +273,11 @@ async fn login(
     let user = sqlx::query_as!(User, "SELECT * FROM users WHERE Username = ?", req.username)
         .fetch_one(&*pool)
         .await
-        .unwrap();
+        .unwrap_or(Default::default());
     let hashed_pass = user.HashedPass;
     let valid = verify(&req.password, &hashed_pass).unwrap();
-    if !valid {
-        return HttpResponse::Forbidden().body("password does not match");
+    if !valid || user.Username == "" {
+        return HttpResponse::Forbidden().body("username or password is wrong");
     }
 
     id.remember(req.username.to_owned());
@@ -333,7 +333,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(IdentityService::new(
                 CookieIdentityPolicy::new(&private_key)
                     .name("auth")
-                    .secure(true),
+                    .secure(false),
             ))
             .wrap(middleware::Logger::default())
             .service(preflight)
