@@ -1,4 +1,3 @@
-use actix_cors::Cors;
 use actix_identity::Identity;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::web::Data;
@@ -319,7 +318,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(Data::new(pool_data.clone()))
             .wrap(
                 middleware::DefaultHeaders::new()
-                    .add(("Access-Control-Allow-Origin", "https://tqk.blue/"))
+                    .add(("Access-Control-Allow-Origin", "https://tqk.blue"))
                     .add(("Access-Control-Allow-Credentials", "true")),
             )
             .wrap(IdentityService::new(
