@@ -2,7 +2,7 @@ use actix_identity::Identity;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::web::Data;
 use actix_web::{
-    get, post, delete, middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder,
+    delete, get, middleware, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder,
 };
 use bcrypt::{hash, verify, DEFAULT_COST};
 use rand::Rng;
@@ -274,9 +274,7 @@ async fn login(
     }
 
     id.remember(req.username.to_owned());
-    HttpResponse::Found()
-        .insert_header(("location", "/hello"))
-        .finish()
+    HttpResponse::Ok().finish()
 }
 
 #[delete("/logout")]
