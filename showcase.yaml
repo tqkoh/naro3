@@ -6,7 +6,7 @@ startup: |
     chmod 777 ./target/release/naro3
 entrypoint: ./target/release/naro3
 http_proxy: 8080
-https: off
+https: on
 
 branch:
     master:
