@@ -1,20 +1,21 @@
+use actix_cors::Cors;
 use actix_identity::Identity;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::web::Data;
 use actix_web::{
-    delete, get, middleware, options, post, web, App, HttpRequest, HttpResponse, HttpServer,
-    Responder,
-};
+    delete, get, http, middleware, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder,
+}; // options,
 use bcrypt::{hash, verify, DEFAULT_COST};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::sync::*;
 
-#[options("{_}")]
-async fn preflight() -> impl Responder {
-    HttpResponse::Ok().finish()
-}
+// #[options("{_}")]
+// async fn preflight() -> impl Responder {
+//     add header to allow methods and headers
+//     HttpResponse::Ok().finish()
+// }
 
 #[get("/")]
 async fn index(req: HttpRequest) -> impl Responder {
@@ -320,20 +321,26 @@ async fn main() -> std::io::Result<()> {
     let pool_data = Arc::new(Mutex::new(pool));
     let private_key = rand::thread_rng().gen::<[u8; 32]>();
     HttpServer::new(move || {
+        let cors = Cors::default()
+            .allowed_origin("https://tqk.blue")
+            .allowed_methods(vec!["GET", "POST", "DELETE"])
+            .allowed_headers(vec![http::header::CONTENT_TYPE])
+            .max_age(3600);
         App::new()
             .app_data(Data::new(pool_data.clone()))
-            .wrap(
-                middleware::DefaultHeaders::new()
-                    .add(("Access-Control-Allow-Origin", "https://tqk.blue"))
-                    .add(("Access-Control-Allow-Credentials", "true")),
-            )
+            .wrap(cors)
+            // .wrap(
+            //     middleware::DefaultHeaders::new()
+            //         .add(("Access-Control-Allow-Origin", "https://tqk.blue"))
+            //         .add(("Access-Control-Allow-Credentials", "true")),
+            // )
             .wrap(IdentityService::new(
                 CookieIdentityPolicy::new(&private_key)
                     .name("auth")
                     .secure(true),
             ))
             .wrap(middleware::Logger::default())
-            .service(preflight)
+            // .service(preflight)
             .service(index)
             .service(signup)
             .service(login)
