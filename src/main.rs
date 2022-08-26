@@ -14,7 +14,7 @@ use std::sync::*;
 
 #[options("{_}")]
 async fn preflight() -> impl Responder {
-    HttpResponse::Ok()
+    HttpResponse::Ok().finish()
 }
 
 #[get("/")]
@@ -336,7 +336,7 @@ async fn main() -> std::io::Result<()> {
                     .secure(true),
             ))
             .wrap(middleware::Logger::default())
-            // .service(preflight)
+            .service(preflight)
             .service(index)
             .service(signup)
             .service(login)
