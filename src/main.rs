@@ -315,16 +315,13 @@ async fn main() -> std::io::Result<()> {
     let pool_data = Arc::new(Mutex::new(pool));
     let private_key = rand::thread_rng().gen::<[u8; 32]>();
     HttpServer::new(move || {
-        let cors = Cors::default()
-            .allowed_origin("https://tqk.blue")
-            .max_age(3600);
         App::new()
             .app_data(Data::new(pool_data.clone()))
             .wrap(
                 middleware::DefaultHeaders::new()
-                    .add(("Access-Control-Allow-Origin", "https://tqk.blue/")),
+                    .add(("Access-Control-Allow-Origin", "https://tqk.blue/"))
+                    .add(("Access-Control-Allow-Credentials", "true")),
             )
-            //.wrap(cors)
             .wrap(IdentityService::new(
                 CookieIdentityPolicy::new(&private_key)
                     .name("auth")
