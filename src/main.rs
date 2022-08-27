@@ -21,7 +21,7 @@ async fn preflight() -> impl Responder {
 #[get("/")]
 async fn index(req: HttpRequest) -> impl Responder {
     println!("Request: {req:?}");
-    HttpResponse::Ok().body("Hello, World!")
+    HttpResponse::Ok().body("Hello, World! frontend: https://tqk.blue/reactpractice/")
 }
 
 #[get("/ping")]
@@ -103,9 +103,9 @@ struct CityIDAndName {
     Name: String,
 }
 
-#[get("/countries/{name}")]
+#[get("/countries/{code}")]
 async fn country(
-    name: web::Path<String>,
+    code: web::Path<String>,
     pool_data: web::Data<Arc<Mutex<sqlx::Pool<sqlx::MySql>>>>,
     id: Identity,
 ) -> impl Responder {
@@ -120,7 +120,7 @@ async fn country(
     let rows = sqlx::query_as!(
         CityIDAndName,
         r#"SELECT ID, Name FROM city WHERE CountryCode=?"#,
-        name.to_string()
+        code.to_string()
     )
     .fetch_all(&*pool)
     .await
@@ -129,9 +129,9 @@ async fn country(
     HttpResponse::Ok().json(rows)
 }
 
-#[get("/cities/{name}")]
+#[get("/cities/{city_id}")]
 async fn cities(
-    name: web::Path<String>,
+    city_id: web::Path<String>,
     pool_data: web::Data<Arc<Mutex<sqlx::Pool<sqlx::MySql>>>>,
     id: Identity,
 ) -> impl Responder {
@@ -141,12 +141,16 @@ async fn cities(
     }
 
     let pool = pool_data.lock().unwrap();
-    let ret = sqlx::query_as!(City, r#"SELECT * FROM city WHERE Name=?"#, name.to_string())
-        .fetch_one(&*pool)
-        .await
-        .unwrap_or(Default::default());
+    let ret = sqlx::query_as!(
+        City,
+        r#"SELECT * FROM city WHERE Name=?"#,
+        city_id.to_string()
+    )
+    .fetch_one(&*pool)
+    .await
+    .unwrap_or(Default::default());
     if ret.ID == 0 {
-        HttpResponse::NotFound().body(format!("city {name} not found"))
+        HttpResponse::NotFound().body(format!("city for id {city_id} not found"))
     } else {
         HttpResponse::Ok().json(ret)
     }
