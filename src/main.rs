@@ -74,7 +74,7 @@ async fn dbtest(
 
 #[derive(Default, Serialize)]
 #[allow(non_snake_case)]
-struct Country {
+struct CountryCodeAndName {
     Code: String,
     Name: String,
 }
@@ -89,7 +89,7 @@ async fn countries(
         return HttpResponse::Forbidden().body("login required");
     }
     let pool = pool_data.lock().unwrap();
-    let ret = sqlx::query_as!(Country, r#"SELECT Code, Name FROM country"#)
+    let ret = sqlx::query_as!(CountryCodeAndName, r#"SELECT Code, Name FROM country"#)
         .fetch_all(&*pool)
         .await
         .unwrap_or(vec![]);
@@ -101,6 +101,22 @@ async fn countries(
 struct CityIDAndName {
     ID: i32,
     Name: String,
+}
+
+#[derive(Default, Serialize)]
+#[allow(non_snake_case)]
+struct Country {
+    Code: String,
+    Name: String,
+    Continent: String,
+    Region: String,
+    Population: i32,
+}
+
+#[derive(Default, Serialize)]
+struct CountryResponse {
+    country: Country,
+    cities: Vec<CityIDAndName>,
 }
 
 #[get("/countries/{code}")]
@@ -117,7 +133,16 @@ async fn country(
     println!("{:?}", pool_data);
     let pool = pool_data.lock().unwrap();
 
-    let rows = sqlx::query_as!(
+    let country_info = sqlx::query_as!(
+        Country,
+        r#"SELECT Code, Name, Continent, Region, Population FROM country WHERE Code=?"#,
+        code.to_string()
+    )
+    .fetch_one(&*pool)
+    .await
+    .unwrap_or(Default::default());
+
+    let cities_list = sqlx::query_as!(
         CityIDAndName,
         r#"SELECT ID, Name FROM city WHERE CountryCode=?"#,
         code.to_string()
@@ -126,7 +151,10 @@ async fn country(
     .await
     .unwrap_or(vec![]);
 
-    HttpResponse::Ok().json(rows)
+    HttpResponse::Ok().json(CountryResponse {
+        country: country_info,
+        cities: cities_list,
+    })
 }
 
 #[get("/cities/{city_id}")]
@@ -143,7 +171,7 @@ async fn cities(
     let pool = pool_data.lock().unwrap();
     let ret = sqlx::query_as!(
         City,
-        r#"SELECT * FROM city WHERE Name=?"#,
+        r#"SELECT * FROM city WHERE CountryCode=?"#,
         city_id.to_string()
     )
     .fetch_one(&*pool)
