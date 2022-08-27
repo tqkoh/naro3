@@ -171,7 +171,11 @@ async fn hello(id: Identity) -> impl Responder {
 
 #[get("/whoami")]
 async fn whoami(id: Identity) -> impl Responder {
-    HttpResponse::Ok().body(id.identity().unwrap_or("guest".to_owned()))
+    let username = id.identity().unwrap_or("".to_owned());
+    if username == "" {
+        return HttpResponse::Forbidden().body("not logged in".to_owned());
+    }
+    HttpResponse::Ok().body(username)
 }
 
 #[get("/hello/{name}")]
@@ -233,7 +237,7 @@ struct User {
     HashedPass: String,
 }
 
-#[post("signup")]
+#[post("/signup")]
 async fn signup(
     req: web::Json<LoginRequest>,
     pool_data: web::Data<Arc<Mutex<sqlx::Pool<sqlx::MySql>>>>,
@@ -269,7 +273,7 @@ async fn signup(
     HttpResponse::Created().finish()
 }
 
-#[post("login")]
+#[post("/login")]
 async fn login(
     req: web::Json<LoginRequest>,
     pool_data: web::Data<Arc<Mutex<sqlx::Pool<sqlx::MySql>>>>,
