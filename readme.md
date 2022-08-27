@@ -24,8 +24,10 @@ http://naro3.tqk.trap.show/
 }
 ```
 - `GET /hello`: "Hello, {username}!", ログインしていればそのユーザーネーム、していなければゲスト
-- `GET /fizzbuzz?count={count}` : [1, count] の fizzbuzz
-- `GET /city/{name}`: 名前が name の都市の情報
+- `GET /fizzbuzz?count={count}`: [1, count] の fizzbuzz
+- `GET /countries`: 国一覧
+- `GET /countries/{code}`: コードが code の国の都市一覧
+- `GET /city/{id}`: id が id の都市の情報
 - `POST /post` :
   - 一部切り取ってそのまま返す 意味はない arr: [int]
 ```

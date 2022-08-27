@@ -96,6 +96,39 @@ async fn countries(
     return HttpResponse::Ok().json(ret);
 }
 
+#[derive(Default, Serialize)]
+#[allow(non_snake_case)]
+struct CityIDAndName {
+    ID: i32,
+    Name: String,
+}
+
+#[get("/countries/{name}")]
+async fn country(
+    name: web::Path<String>,
+    pool_data: web::Data<Arc<Mutex<sqlx::Pool<sqlx::MySql>>>>,
+    id: Identity,
+) -> impl Responder {
+    let username = id.identity().unwrap_or("".to_string());
+    if username == "" {
+        return HttpResponse::Forbidden().body("login required");
+    }
+
+    println!("{:?}", pool_data);
+    let pool = pool_data.lock().unwrap();
+
+    let rows = sqlx::query_as!(
+        CityIDAndName,
+        r#"SELECT ID, Name FROM city WHERE CountryCode=?"#,
+        name.to_string()
+    )
+    .fetch_all(&*pool)
+    .await
+    .unwrap_or(vec![]);
+
+    HttpResponse::Ok().json(rows)
+}
+
 #[get("/cities/{name}")]
 async fn cities(
     name: web::Path<String>,
@@ -385,6 +418,7 @@ async fn main() -> std::io::Result<()> {
             .service(dbtest)
             .service(postcity)
             .service(countries)
+            .service(country)
             .service(cities)
             .service(whoami)
     })
