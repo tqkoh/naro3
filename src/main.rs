@@ -171,7 +171,7 @@ async fn cities(
     let pool = pool_data.lock().unwrap();
     let ret = sqlx::query_as!(
         City,
-        r#"SELECT * FROM city WHERE CountryCode=?"#,
+        r#"SELECT * FROM city WHERE ID=?"#,
         city_id.to_string()
     )
     .fetch_one(&*pool)
