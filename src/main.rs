@@ -24,7 +24,7 @@ async fn index(req: HttpRequest) -> impl Responder {
     HttpResponse::Ok().body("Hello, World!")
 }
 
-#[get("ping")]
+#[get("/ping")]
 async fn ping() -> impl Responder {
     HttpResponse::Ok().body("pong")
 }
@@ -39,7 +39,7 @@ struct City {
     Population: i32,
 }
 
-#[get("dbtest")]
+#[get("/dbtest")]
 async fn dbtest(
     pool_data: web::Data<Arc<Mutex<sqlx::Pool<sqlx::MySql>>>>,
     id: Identity,
@@ -72,7 +72,30 @@ async fn dbtest(
     HttpResponse::Ok().body(ret.join("\n"))
 }
 
-#[get("cities/{name}")]
+#[derive(Default, Serialize)]
+#[allow(non_snake_case)]
+struct CityName {
+    Name: String,
+}
+
+#[get("/cities")]
+async fn cities_list(
+    pool_data: web::Data<Arc<Mutex<sqlx::Pool<sqlx::MySql>>>>,
+    id: Identity,
+) -> impl Responder {
+    let username = id.identity().unwrap_or("".to_string());
+    if username == "" {
+        return HttpResponse::Forbidden().body("login required");
+    }
+    let pool = pool_data.lock().unwrap();
+    let ret = sqlx::query_as!(CityName, r#"SELECT Name FROM city"#)
+        .fetch_all(&*pool)
+        .await
+        .unwrap_or(vec![]);
+    return HttpResponse::Ok().json(ret);
+}
+
+#[get("/cities/{name}")]
 async fn cities(
     name: web::Path<String>,
     pool_data: web::Data<Arc<Mutex<sqlx::Pool<sqlx::MySql>>>>,
@@ -360,6 +383,7 @@ async fn main() -> std::io::Result<()> {
             .service(add)
             .service(dbtest)
             .service(postcity)
+            .service(cities_list)
             .service(cities)
             .service(whoami)
     })
