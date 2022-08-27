@@ -74,12 +74,13 @@ async fn dbtest(
 
 #[derive(Default, Serialize)]
 #[allow(non_snake_case)]
-struct CityName {
+struct Country {
+    Code: String,
     Name: String,
 }
 
-#[get("/cities")]
-async fn cities_list(
+#[get("/countries")]
+async fn countries(
     pool_data: web::Data<Arc<Mutex<sqlx::Pool<sqlx::MySql>>>>,
     id: Identity,
 ) -> impl Responder {
@@ -88,7 +89,7 @@ async fn cities_list(
         return HttpResponse::Forbidden().body("login required");
     }
     let pool = pool_data.lock().unwrap();
-    let ret = sqlx::query_as!(CityName, r#"SELECT Name FROM city"#)
+    let ret = sqlx::query_as!(Country, r#"SELECT Code, Name FROM country"#)
         .fetch_all(&*pool)
         .await
         .unwrap_or(vec![]);
@@ -383,7 +384,7 @@ async fn main() -> std::io::Result<()> {
             .service(add)
             .service(dbtest)
             .service(postcity)
-            .service(cities_list)
+            .service(countries)
             .service(cities)
             .service(whoami)
     })
